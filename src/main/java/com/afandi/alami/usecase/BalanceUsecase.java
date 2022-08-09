@@ -21,11 +21,20 @@ public class BalanceUsecase {
     @Value("${eod.docs.location}")
     private String eodDir;
 
-    @Value("${eod.docs.avg-balance.total-row}")
+    @Value("${avg-balance.total-row}")
     private Integer avgBalanceTotalRow;
 
-    @Value("${eod.docs.avg-balance.total-thread}")
+    @Value("${avg-balance.thread}")
     private Integer avgBalanceTotalThread;
+
+    @Value("${free-balance.budget}")
+    private Integer freeBalanceBudget;
+
+    @Value("${free-balance.participant}")
+    private Integer freeBalanceParticipant;
+
+    @Value("${free-balance.thread}")
+    private Integer freeBalanceThread;
 
     public void calculateAverageBalance() {
         try {
@@ -67,7 +76,48 @@ public class BalanceUsecase {
             System.out.println("== Calculate Average Balance Has Finished ==");
 
         } catch (IOException e) {
-            System.out.printf("[%s] => %s\n", getClass().getName(), e.getMessage());
+            System.out.printf("[%s][%s] => %s\n", getClass().getName(), "calculateAverageBalance", e.getMessage());
+        }
+    }
+
+    public void grantFreeBalance() {
+        try {
+            String eodLocation = eodDir + DocumentConstant.EOD_BEFORE_NAME;
+            FileReader fr = new FileReader(eodLocation);
+            BufferedReader br = new BufferedReader(fr);
+
+            // skip the header / first row
+            br.readLine();
+
+            int freeBalance = freeBalanceBudget / freeBalanceParticipant, participantCounter = 0;
+            Map<String, Map<Integer, String>> rows = new HashMap<>();
+            String line;
+            while ((line = br.readLine()) != null && participantCounter++ < freeBalanceParticipant) {
+                String[] values = line.split(PunctuationConstant.SEMICOLON);
+                int balance = Integer.parseInt(values[IndexConstant.EOD_BEFORE_BALANCE]);
+
+                Map<Integer, String> cells = new HashMap<>();
+                cells.put(IndexConstant.EOD_AFTER_BALANCE, String.valueOf(balance + freeBalance));
+
+                rows.put(values[IndexConstant.EOD_BEFORE_ID], cells);
+            }
+
+            br.close();
+
+            RowModifier rowModifier = new RowModifier();
+            rowModifier.setFilePath(eodDir + DocumentConstant.EOD_AFTER_NAME);
+            rowModifier.setChunkSize((int) Math.ceil((float) freeBalanceParticipant / freeBalanceThread));
+            rowModifier.setRows(rows);
+
+            for (int i = 0; i < freeBalanceThread; i++) {
+                ModifyFileThread thread = new ModifyFileThread(rowModifier);
+                thread.start();
+            }
+
+            System.out.println("== Grant Free Balance Has Finished ==");
+
+        } catch (IOException e) {
+            System.out.printf("[%s][%s] => %s\n", getClass().getName(), "grantFreeBalance", e.getMessage());
         }
     }
 }

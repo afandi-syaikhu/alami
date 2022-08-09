@@ -25,7 +25,10 @@ public class EndOfDayCommand implements Callable<Integer> {
 
         if (n == null) {
             balanceUC.calculateAverageBalance();
+            balanceUC.grantFreeBalance();
         } else if (n == 1) {
+            balanceUC.calculateAverageBalance();
+        } else if (n == 3) {
             balanceUC.calculateAverageBalance();
         } else {
             System.out.println("== Invalid Argument ==");
