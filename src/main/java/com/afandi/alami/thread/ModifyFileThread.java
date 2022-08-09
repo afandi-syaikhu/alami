@@ -52,6 +52,13 @@ public class ModifyFileThread extends Thread {
                             values[IndexConstant.EOD_AFTER_THREAD_NO_1] = String.valueOf(threadId);
                         }
 
+                        // handle balance
+                        String cellBalance = row.get(IndexConstant.EOD_AFTER_BALANCE);
+                        if (cellBalance != null && !cellBalance.isEmpty()) {
+                            values[IndexConstant.EOD_AFTER_BALANCE] = cellBalance;
+                            values[IndexConstant.EOD_AFTER_THREAD_NO_3] = String.valueOf(threadId);
+                        }
+
                         // collect the index to be removed soon after successfully write the new data
                         removedIndexes.add(id);
 
@@ -78,7 +85,7 @@ public class ModifyFileThread extends Thread {
                 rows.keySet().removeAll(removedIndexes);
 
             } catch (IOException e) {
-                System.out.printf("[%s] => %s\n", getClass().getName(), e.getMessage());
+                System.out.printf("[%s][%s] => %s\n", getClass().getName(), "run", e.getMessage());
             }
         }
     }
