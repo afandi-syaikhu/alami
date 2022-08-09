@@ -33,12 +33,10 @@ public class BalanceUsecase {
             FileReader fr = new FileReader(eodLocation);
             BufferedReader br = new BufferedReader(fr);
 
-            // to skip first line
+            // skip the header / first row
             br.readLine();
 
-            int chunkIndex = 0, chunkSize = (int) Math.ceil((float) avgBalanceTotalRow / avgBalanceTotalThread);
-            Map<Integer, Map<String, Map<Integer, String>>> rowsChunk = new HashMap<>();
-
+            Map<String, Map<Integer, String>> rows = new HashMap<>();
             String line;
             while ((line = br.readLine()) != null) {
                 String[] values = line.split(PunctuationConstant.SEMICOLON);
@@ -51,46 +49,20 @@ public class BalanceUsecase {
                 Map<Integer, String> cells = new HashMap<>();
                 cells.put(IndexConstant.EOD_AFTER_AVG_BALANCE, String.format("%.2f", avgBalance));
 
-                Map<String, Map<Integer, String>> row = new HashMap<>();
-                row.put(id, cells);
-
-                // put into first ever chunk
-                Map<String, Map<Integer, String>> chunk = rowsChunk.get(chunkIndex);
-                if (chunk == null || chunk.isEmpty()) {
-                    rowsChunk.put(chunkIndex, row);
-                    continue;
-                }
-
-                // put into existing chunk
-                if (chunk.size() < chunkSize) {
-                    chunk.put(id, cells);
-                    rowsChunk.put(chunkIndex, chunk);
-                    continue;
-                }
-
-                // create new chunk when the rest is full
-                rowsChunk.put(++chunkIndex, row);
-
+                rows.put(id, cells);
             }
 
             br.close();
 
-            rowsChunk.forEach((key, val) -> {
-                RowModifier dataRows = new RowModifier();
-                dataRows.setDir(eodDir);
-                dataRows.setFileName(DocumentConstant.EOD_AFTER_NAME);
-                dataRows.setRows(val);
+            RowModifier rowModifier = new RowModifier();
+            rowModifier.setFilePath(eodDir + DocumentConstant.EOD_AFTER_NAME);
+            rowModifier.setChunkSize((int) Math.ceil((float) avgBalanceTotalRow / avgBalanceTotalThread));
+            rowModifier.setRows(rows);
 
-                ModifyFileThread worker = new ModifyFileThread(dataRows);
-
-                worker.start();
-                try {
-                    worker.join();
-                } catch (InterruptedException e) {
-                    System.out.printf("[%s] => %s\n", getClass().getName(), e.getMessage());
-                }
-
-            });
+            for (int i = 0; i < avgBalanceTotalThread; i++) {
+                ModifyFileThread thread = new ModifyFileThread(rowModifier);
+                thread.start();
+            }
 
             System.out.println("== Calculate Average Balance Has Finished ==");
 

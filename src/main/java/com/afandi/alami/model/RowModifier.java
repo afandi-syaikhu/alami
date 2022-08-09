@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @Getter
 public class RowModifier {
-    private String dir;
-    private String fileName;
+    private int chunkSize;
+    private String filePath;
     private Map<String, Map<Integer, String>> rows = new HashMap<>();
 }
